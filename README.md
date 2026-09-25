@@ -1,4 +1,4 @@
-﻿# 🧠 AI-Powered Process Scheduling
+# 🧠 AI-Powered Process Scheduling
 
 An intelligent CPU scheduling simulator using traditional algorithms and advanced Machine Learning (ML) + Reinforcement Learning (RL) techniques.
 
@@ -28,6 +28,7 @@ A glimpse of our AI-powered CPU Scheduler in action:
 ## 🧩 End-to-End System Design
 
 ### 🔷 Frontend
+- **Modern UI**: Completely redesigned interface featuring Glassmorphism, sleek dark mode aesthetics, and smooth micro-animations.
 - Input process details: Arrival Time, Burst Time, Priority, etc.
 - Select scheduler type: `FCFS`, `SJF`, `Round Robin`, `ML-based`, or `RL-based`.
 
@@ -189,12 +190,10 @@ P2: 1, 8, ...
 
 ## 📚 Technologies Used
 
-- HTML, CSS (Bootstrap)
-- JavaScript (Frontend logic)
-- Python (Flask for backend)
-- Scikit-learn, PyTorch (ML + RL Models)
-- PPO (Proximal Policy Optimization)
-- Matplotlib (for analysis & visualization)
+- **Frontend**: HTML5, Modern CSS (Glassmorphism, Animations), Bootstrap 5, JavaScript
+- **Backend**: Python (Flask)
+- **AI/ML**: Scikit-learn, PyTorch, PPO (Proximal Policy Optimization)
+- **Visualization**: Matplotlib (for analysis & visualization)
 
 ---
 
@@ -206,7 +205,7 @@ This project showcases a powerful integration of traditional scheduling principl
 
 ## 🔗 GitHub Repo
 
-[👉 View Source on GitHub](https://github.com/ayusharyan143/ayusharyan143-Frontend-AI-Based-CPU-Scheduler)
+[👉 View Source on GitHub](https://github.com/AjayKumarOnly/Ai-driven-Process-Management-System-)
 
 ---
 
