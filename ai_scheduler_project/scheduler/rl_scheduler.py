@@ -20,9 +20,20 @@ class Process:
 class ProcessSchedulingEnv(gym.Env):
     def __init__(self):
         super().__init__()
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        model_dir = os.path.join(base_dir, 'models')
+        
+        predictor_path = os.path.join(model_dir, 'burst_time_predictor.joblib')
+        if not os.path.exists(predictor_path):
+            predictor_path = os.path.join(base_dir, 'burst_time_predictor.joblib')
+
+        scaler_path = os.path.join(model_dir, 'feature_scaler.joblib')
+        if not os.path.exists(scaler_path):
+            scaler_path = os.path.join(base_dir, 'feature_scaler.joblib')
+
         # Load the ML burst time predictor
-        self.burst_predictor = joblib.load(r"C:\Users\ayush\Desktop\OS_PBL_Project\ai_scheduler_project\models\burst_time_predictor.joblib")
-        self.scaler = joblib.load(r"C:\Users\ayush\Desktop\OS_PBL_Project\ai_scheduler_project\models\feature_scaler.joblib")
+        self.burst_predictor = joblib.load(predictor_path)
+        self.scaler = joblib.load(scaler_path)
 
         self.FEATURE_NAMES = [
             'io_write_bytes',
@@ -234,9 +245,9 @@ def run_rl_scheduler(process_list):
             env.running_process = env.ready_queue.pop(0)
             logging.debug(f"Running process set: {env.running_process.pid}")
 
-        # Load the pre-trained RL model
-        logging.debug("Loading pre-trained RL model")
-        model = PPO.load(r"C:\Users\ayush\Desktop\OS_PBL_Project\ai_scheduler_project\models\rl_scheduler_model.zip")
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        rl_model_path = os.path.join(base_dir, 'models', 'rl_scheduler_model.zip')
+        model = PPO.load(rl_model_path)
         logging.debug("RL model loaded successfully")
 
         # Start RL scheduling loop

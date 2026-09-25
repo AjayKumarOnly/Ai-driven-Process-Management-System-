@@ -8,7 +8,10 @@ import joblib
 from stable_baselines3 import PPO
 
 # Load and prepare data
-df = pd.read_csv(r"C:\Users\ayush\Desktop\OS_PBL_Project\ai_scheduler_project\data\process_data.csv")
+import os
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+csv_path = os.path.join(BASE_DIR, 'data', 'process_data.csv')
+df = pd.read_csv(csv_path)
 
 # Define feature names explicitly
 FEATURE_NAMES = [
@@ -111,7 +114,7 @@ print(f"Predicted burst time: {predicted_burst_time:.2f} seconds")
 
 try:
     print("Attempting to load models...")
-    model_path = r"C:\Users\ayush\Desktop\OS_PBL_Project\ai_scheduler_project\models\rl_scheduler_model.zip"  # Use the zip file instead of the directory
+    model_path = os.path.join(BASE_DIR, 'models', 'rl_scheduler_model.zip')
     print(f"Loading RL model from: {model_path}")
     
     rl_model = PPO.load(model_path)

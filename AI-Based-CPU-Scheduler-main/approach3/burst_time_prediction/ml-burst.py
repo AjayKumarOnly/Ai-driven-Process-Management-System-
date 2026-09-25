@@ -7,8 +7,10 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import joblib
 from stable_baselines3 import PPO
 
-# Load and prepare data
-df = pd.read_csv(r"C:\Users\ayush\Desktop\OS_PBL_Project\AI-Based-CPU-Scheduler-main\approach3\burst_time_prediction\process_data.csv")
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.join(BASE_DIR, 'process_data.csv')
+df = pd.read_csv(csv_path)
 
 # Define feature names explicitly
 FEATURE_NAMES = [

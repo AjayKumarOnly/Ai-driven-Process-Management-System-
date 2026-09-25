@@ -8,9 +8,22 @@ from models.ml_burst import predict_burst_time
 
 app = Flask(__name__)
 
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_DIR = os.path.join(BASE_DIR, 'models')
+
+rf_model_path = os.path.join(MODEL_DIR, 'burst_time_predictor.joblib')
+if not os.path.exists(rf_model_path):
+    rf_model_path = os.path.join(BASE_DIR, 'burst_time_predictor.joblib')
+
+scaler_path = os.path.join(MODEL_DIR, 'feature_scaler.joblib')
+if not os.path.exists(scaler_path):
+    scaler_path = os.path.join(BASE_DIR, 'feature_scaler.joblib')
+
 # Load the RandomForest model and other necessary resources
-rf_model = joblib.load(r"C:\Users\ayush\Desktop\OS_PBL_Project\AI-Based-CPU-Scheduler-main\approach3\burst_time_prediction\burst_time_predictor.joblib")  # RandomForest model
-scaler = joblib.load(r"C:\Users\ayush\Desktop\OS_PBL_Project\AI-Based-CPU-Scheduler-main\approach3\burst_time_prediction\feature_scaler.joblib")  # Feature scaler
+rf_model = joblib.load(rf_model_path)
+scaler = joblib.load(scaler_path)
 
 # Define the feature names used in the model
 FEATURE_NAMES = [
