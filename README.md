@@ -10,19 +10,6 @@ To build an **AI-powered CPU scheduler** that intelligently chooses the best pro
 
 
 
-## 📸 Snapshot  
-A glimpse of our AI-powered CPU Scheduler in action:
-
-### 🧪 Case 1: All Processes with Arrival Time and Burst Time  
-![Case 1](https://github.com/user-attachments/assets/4ea05d44-6846-409f-b28e-837d96259d7c)
-
-
-
-### 🌐 Case 2: Real-World Scenario with Arrival Time,	IO Write Bytes,	Context Switches (Voluntary),	CPU Percent,	IO Read Bytes,	IO Read Count,	IO Write Count  
-![Case 2](https://github.com/user-attachments/assets/f9daf92c-b6f0-4534-9a4d-53a6c2f9b9f4)
-
-
-
 ---
 
 ## 🧩 End-to-End System Design
