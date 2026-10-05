@@ -1,6 +1,6 @@
-import gym
+import gymnasium as gym
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 import joblib
 from stable_baselines3 import PPO
 import pandas as pd
@@ -46,8 +46,8 @@ class ProcessSchedulingEnv(gym.Env):
 
         self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Box(
-            low=np.array([0, 0, 0, 0], dtype=np.float32),
-            high=np.array([100, 100, 20, 100], dtype=np.float32),
+            low=np.array([0, 0, 0, 0, 0], dtype=np.float32),
+            high=np.array([100, 100, 20, 100, 100], dtype=np.float32),
             dtype=np.float32
         )
 
@@ -73,15 +73,17 @@ class ProcessSchedulingEnv(gym.Env):
 
     def get_state(self):
         if not self.running_process:
-            return np.zeros(4, dtype=np.float32)
+            return np.zeros(5, dtype=np.float32)
 
         execution_progress = self.running_process.execution_time / max(1, self.running_process.predicted_burst_time)
+        min_queue_burst = min([p.predicted_burst_time for p in self.ready_queue]) if self.ready_queue else 100.0
 
         return np.array([
             min(100, self.running_process.predicted_burst_time),
             min(100, self.running_process.waiting_time),
             min(20, len(self.ready_queue)),
-            min(100, execution_progress * 100)
+            min(100, execution_progress * 100),
+            min(100, min_queue_burst)
         ], dtype=np.float32)
 
     def step(self, action):
@@ -95,6 +97,8 @@ class ProcessSchedulingEnv(gym.Env):
                 else:
                     reward += self.SWITCH_PENALTY
                 self.ready_queue.append(self.running_process)
+            # AI Optimization: Switch to the shortest job in the queue
+            self.ready_queue.sort(key=lambda p: p.predicted_burst_time)
             self.running_process = self.ready_queue.pop(0)
 
         if self.running_process:
@@ -125,9 +129,10 @@ class ProcessSchedulingEnv(gym.Env):
                 completion_bonus = 10.0 * (1.0 - min(1.0, avg_waiting_time / self.LONG_WAIT_THRESHOLD))
                 reward += completion_bonus
 
-        return self.get_state(), float(reward), done, {}
+        return self.get_state(), float(reward), done, False, {}
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
         self.current_time = 0
         self.completed_processes = []
         self.ready_queue = []
@@ -151,7 +156,7 @@ class ProcessSchedulingEnv(gym.Env):
         if self.ready_queue:
             self.running_process = self.ready_queue.pop(0)
 
-        return self.get_state()
+        return self.get_state(), {}
 
 def train_rl_scheduler(total_timesteps=150000):
     env = ProcessSchedulingEnv()
@@ -168,7 +173,9 @@ def train_rl_scheduler(total_timesteps=150000):
 
     try:
         model.learn(total_timesteps=total_timesteps)
-        model.save("rl_scheduler_model")
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        model_path = os.path.join(base_dir, 'models', 'rl_scheduler_model')
+        model.save(model_path)
         return model
     except Exception as e:
         print(f"Error during training: {str(e)}")
@@ -178,13 +185,14 @@ def evaluate_scheduler(model, episodes=10):
     env = ProcessSchedulingEnv()
 
     for episode in range(episodes):
-        state = env.reset()
+        state, _ = env.reset()
         total_reward = 0
         done = False
 
         while not done:
             action, _ = model.predict(state)
-            state, reward, done, _ = env.step(action)
+            state, reward, terminated, truncated, _ = env.step(action)
+            done = terminated or truncated
             total_reward += reward
 
         avg_waiting_time = np.mean([p.waiting_time for p in env.completed_processes])
@@ -231,14 +239,18 @@ def run_rl_scheduler(process_list):
 
         logging.debug(f"Number of processes: {env.total_processes}")
 
-        # Load processes into the environment
+        # Keep a list of all processes sorted by arrival time
+        pending_processes = []
         for i, process_data in enumerate(process_list):
             arrival_time, features = process_data['arrival_time'], process_data['features']
-            process = Process(pid=i, arrival_time=arrival_time, features=features)
+            process_pid = process_data.get('pid', i)
+            process = Process(pid=process_pid, arrival_time=arrival_time, features=features)
             process.predicted_burst_time = env.predict_burst_time(features)
-            env.ready_queue.append(process)
+            pending_processes.append(process)
 
-            logging.debug(f"Added process {process.pid}: Arrival Time: {arrival_time}, Features: {features}")
+            logging.debug(f"Prepared process {process.pid}: Arrival Time: {arrival_time}, Features: {features}")
+
+        pending_processes.sort(key=lambda p: p.arrival_time)
 
         # If there are processes, set the first one to be the running process
         if env.ready_queue:
@@ -252,16 +264,28 @@ def run_rl_scheduler(process_list):
 
         # Start RL scheduling loop
         state = env.get_state()
-        done = False
         total_reward = 0
 
         logging.debug("Starting scheduling using RL model")
-        while not done:
+        while len(env.completed_processes) < env.total_processes:
+            # Add arrived processes to ready queue
+            while pending_processes and pending_processes[0].arrival_time <= env.current_time:
+                arrived_process = pending_processes.pop(0)
+                if env.running_process is None and not env.ready_queue:
+                    env.running_process = arrived_process
+                else:
+                    env.ready_queue.append(arrived_process)
+            
+            # If nothing is running and nothing is ready, just advance time
+            if env.running_process is None and not env.ready_queue:
+                env.current_time += 1
+                continue
+
             action, _ = model.predict(state)
-            state, reward, done, _ = env.step(action)
+            state, reward, _, _, _ = env.step(action)
             total_reward += reward
 
-            logging.debug(f"State: {state}, Action: {action}, Reward: {reward}, Done: {done}")
+            logging.debug(f"State: {state}, Action: {action}, Reward: {reward}")
 
         # Finalize process metrics
                 # Finalize process metrics
@@ -278,14 +302,13 @@ def run_rl_scheduler(process_list):
         avg_completion_time = round(np.mean([p.completion_time for p in env.completed_processes]), 2)
         throughput = round(len(env.completed_processes) / total_time, 2) if total_time > 0 else 0.0
 
-        # Gather final results
         results = {
             'schedule': [],
             'avg_waiting_time': avg_waiting_time,
             'avg_turnaround_time': avg_turnaround_time,
             'avg_completion_time': avg_completion_time,
             'throughput': throughput,
-            'cpu_utilization': f"{cpu_utilization}%",
+            'cpu_utilization': cpu_utilization,
             'features_used': [process.features for process in env.completed_processes]
         }
 
