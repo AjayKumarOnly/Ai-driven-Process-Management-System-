@@ -437,21 +437,27 @@
     // --- Core Algorithms (Logic Unchanged from original) ---
     
     function fcfs(processes) {
+      // Sort by arrival time
+      processes.sort((a, b) => a.arrival_time - b.arrival_time);
+
       let time = 0;
       let avg_waiting_time = 0;
       let avg_turnaround_time = 0;
       let total_burst_time = 0;
 
       processes.forEach((process) => {
+        // Advance clock if CPU is idle
+        if (time < process.arrival_time) time = process.arrival_time;
+
         process.completion_time = time + process.burst_time;
-        process.turnaround_time = process.completion_time - process.arrival_time;
-        process.waiting_time = process.turnaround_time - process.burst_time;
+        process.turnaround_time = Math.max(0, process.completion_time - process.arrival_time);
+        process.waiting_time = Math.max(0, process.turnaround_time - process.burst_time);
 
         avg_waiting_time += process.waiting_time;
         avg_turnaround_time += process.turnaround_time;
         total_burst_time += process.burst_time;
 
-        time += process.burst_time;
+        time = process.completion_time;
       });
 
       const total_processes = processes.length;
@@ -469,31 +475,48 @@
     }
 
     function sjf(processes) {
-      processes.sort((a, b) => a.burst_time - b.burst_time);
-
+      // Non-preemptive SJF: pick shortest available job at each step
+      let remaining = [...processes];
       let time = 0;
+      let scheduled = [];
       let avg_waiting_time = 0;
       let avg_turnaround_time = 0;
       let total_burst_time = 0;
 
-      processes.forEach((process) => {
-        process.completion_time = time + process.burst_time;
-        process.turnaround_time = process.completion_time - process.arrival_time;
-        process.waiting_time = process.turnaround_time - process.burst_time;
+      while (remaining.length > 0) {
+        // Processes that have arrived by current time
+        const available = remaining.filter(p => p.arrival_time <= time);
 
-        avg_waiting_time += process.waiting_time;
-        avg_turnaround_time += process.turnaround_time;
-        total_burst_time += process.burst_time;
+        let proc;
+        if (available.length === 0) {
+          // CPU idle — jump to next arrival
+          time = Math.min(...remaining.map(p => p.arrival_time));
+          continue;
+        } else {
+          // Pick shortest burst among arrived processes
+          proc = available.reduce((a, b) => a.burst_time <= b.burst_time ? a : b);
+        }
 
-        time += process.burst_time;
-      });
+        remaining.splice(remaining.indexOf(proc), 1);
 
-      const total_processes = processes.length;
+        proc.completion_time = time + proc.burst_time;
+        proc.turnaround_time = Math.max(0, proc.completion_time - proc.arrival_time);
+        proc.waiting_time = Math.max(0, proc.turnaround_time - proc.burst_time);
+
+        avg_waiting_time += proc.waiting_time;
+        avg_turnaround_time += proc.turnaround_time;
+        total_burst_time += proc.burst_time;
+
+        time = proc.completion_time;
+        scheduled.push(proc);
+      }
+
+      const total_processes = scheduled.length;
       const throughput = total_processes / time;
       const cpu_utilization = (total_burst_time / time) * 100;
 
       return {
-        schedule: processes,
+        schedule: scheduled,
         avg_waiting_time: (avg_waiting_time / total_processes).toFixed(2),
         avg_turnaround_time: (avg_turnaround_time / total_processes).toFixed(2),
         avg_completion_time: (total_burst_time / total_processes).toFixed(2),
@@ -503,40 +526,69 @@
     }
 
     function roundRobin(processes, quantum) {
+      // Sort by arrival time first
+      const sorted = [...processes].sort((a, b) => a.arrival_time - b.arrival_time);
+
       let time = 0;
       let avg_waiting_time = 0;
       let avg_turnaround_time = 0;
       let total_burst_time = 0;
 
-      let queue = [...processes];
-      let remaining_burst_time = processes.map((p) => p.burst_time);
+      // Track remaining burst times by index
+      const remaining = sorted.map(p => ({ proc: p, rem: p.burst_time }));
+      const readyQueue = [];
+      let i = 0; // pointer into sorted arrivals
 
-      while (queue.length > 0) {
-        const process = queue.shift();
-        const burst_time = remaining_burst_time.shift();
-
-        if (burst_time > quantum) {
-          remaining_burst_time.push(burst_time - quantum);
-          queue.push(process);
-          time += quantum;
-        } else {
-          time += burst_time;
-          process.completion_time = time;
-          process.turnaround_time = process.completion_time - process.arrival_time;
-          process.waiting_time = process.turnaround_time - process.burst_time;
-
-          avg_waiting_time += process.waiting_time;
-          avg_turnaround_time += process.turnaround_time;
-          total_burst_time += process.burst_time;
+      // Seed with first arrival
+      if (remaining.length > 0) {
+        time = sorted[0].arrival_time;
+        while (i < remaining.length && remaining[i].proc.arrival_time <= time) {
+          readyQueue.push(remaining[i++]);
         }
       }
 
-      const total_processes = processes.length;
+      while (readyQueue.length > 0) {
+        const item = readyQueue.shift();
+        const proc = item.proc;
+        const slice = Math.min(item.rem, quantum);
+
+        time += slice;
+        item.rem -= slice;
+
+        // Enqueue any newly arrived processes
+        while (i < remaining.length && remaining[i].proc.arrival_time <= time) {
+          readyQueue.push(remaining[i++]);
+        }
+
+        if (item.rem > 0) {
+          // Not finished — re-queue
+          readyQueue.push(item);
+        } else {
+          // Finished
+          proc.completion_time = time;
+          proc.turnaround_time = Math.max(0, proc.completion_time - proc.arrival_time);
+          proc.waiting_time = Math.max(0, proc.turnaround_time - proc.burst_time);
+
+          avg_waiting_time += proc.waiting_time;
+          avg_turnaround_time += proc.turnaround_time;
+          total_burst_time += proc.burst_time;
+        }
+
+        // If ready queue is empty but more processes haven't arrived yet
+        if (readyQueue.length === 0 && i < remaining.length) {
+          time = remaining[i].proc.arrival_time;
+          while (i < remaining.length && remaining[i].proc.arrival_time <= time) {
+            readyQueue.push(remaining[i++]);
+          }
+        }
+      }
+
+      const total_processes = sorted.length;
       const throughput = total_processes / time;
       const cpu_utilization = (total_burst_time / time) * 100;
 
       return {
-        schedule: processes,
+        schedule: sorted,
         avg_waiting_time: (avg_waiting_time / total_processes).toFixed(2),
         avg_turnaround_time: (avg_turnaround_time / total_processes).toFixed(2),
         avg_completion_time: (total_burst_time / total_processes).toFixed(2),

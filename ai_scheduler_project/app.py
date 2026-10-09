@@ -119,9 +119,13 @@ def fcfs_scheduler(processes):
     completed_processes = []
     
     for proc in processes:
+        # If CPU is idle and process hasn't arrived yet, advance time
+        if proc['arrival_time'] > current_time:
+            current_time = proc['arrival_time']
+
         completion_time = current_time + proc['predicted_burst_time']
-        turnaround_time = completion_time - proc['arrival_time']
-        waiting_time = turnaround_time - proc['predicted_burst_time']
+        turnaround_time = max(0, completion_time - proc['arrival_time'])
+        waiting_time = max(0, turnaround_time - proc['predicted_burst_time'])
         
         completed_processes.append({
             'pid': proc['pid'],
@@ -141,17 +145,29 @@ def fcfs_scheduler(processes):
     }
 
 def sjf_scheduler(processes):
-    # Shortest Job First Scheduling
-    processes.sort(key=lambda p: p['predicted_burst_time'])
-    
+    # Shortest Job First Scheduling (Non-preemptive)
+    # Only selects processes that have already arrived at current_time
+    remaining = list(processes)  # work on a copy
     current_time = 0
     completed_processes = []
-    
-    for proc in processes:
+
+    while remaining:
+        # Processes available (arrived) by current_time
+        available = [p for p in remaining if p['arrival_time'] <= current_time]
+
+        if not available:
+            # CPU idle — jump forward to the next arriving process
+            current_time = min(p['arrival_time'] for p in remaining)
+            continue
+
+        # Pick the shortest job among arrived processes
+        proc = min(available, key=lambda p: p['predicted_burst_time'])
+        remaining.remove(proc)
+
         completion_time = current_time + proc['predicted_burst_time']
-        turnaround_time = completion_time - proc['arrival_time']
-        waiting_time = turnaround_time - proc['predicted_burst_time']
-        
+        turnaround_time = max(0, completion_time - proc['arrival_time'])
+        waiting_time = max(0, turnaround_time - proc['predicted_burst_time'])
+
         completed_processes.append({
             'pid': proc['pid'],
             'arrival_time': proc['arrival_time'],
@@ -160,9 +176,9 @@ def sjf_scheduler(processes):
             'turnaround_time': turnaround_time,
             'waiting_time': waiting_time
         })
-        
+
         current_time = completion_time
-    
+
     avg_waiting_time = np.mean([p['waiting_time'] for p in completed_processes])
     return {
         'schedule': completed_processes,
