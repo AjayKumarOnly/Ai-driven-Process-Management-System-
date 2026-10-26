@@ -513,3 +513,159 @@ int main()
 
     return 0;
 }
+#include <stdio.h>
+
+int main()
+{
+    int n, tq;
+
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    int bt[n], rt[n], ct[n], tat[n], wt[n];
+
+    printf("Enter burst time:\n");
+
+    for (int i = 0; i < n; i++)
+    {
+        printf("P%d: ", i + 1);
+        scanf("%d", &bt[i]);
+        rt[i] = bt[i];
+    }
+
+    printf("Enter time quantum: ");
+    scanf("%d", &tq);
+
+    int time = 0;
+    int completed = 0;
+
+    printf("\nGantt Chart:\n");
+
+    while (completed < n)
+    {
+        for (int i = 0; i < n; i++)
+        {
+            if (rt[i] > 0)
+            {
+                printf("| P%d ", i + 1);
+
+                if (rt[i] > tq)
+                {
+                    time = time + tq;
+                    rt[i] = rt[i] - tq;
+                }
+                else
+                {
+                    time = time + rt[i];
+                    rt[i] = 0;
+
+                    ct[i] = time;
+                    completed++;
+                }
+            }
+        }
+    }
+
+    printf("|\n");
+
+    float avg_tat = 0, avg_wt = 0;
+
+    printf("\nProcess\tBT\tCT\tTAT\tWT\n");
+
+    for (int i = 0; i < n; i++)
+    {
+        tat[i] = ct[i];       // AT = 0
+        wt[i] = tat[i] - bt[i];
+
+        avg_tat = avg_tat + tat[i];
+        avg_wt = avg_wt + wt[i];
+
+        printf("P%d\t%d\t%d\t%d\t%d\n",
+               i + 1, bt[i], ct[i], tat[i], wt[i]);
+    }
+
+    printf("\nAverage TAT = %.2f", avg_tat / n);
+    printf("\nAverage WT = %.2f\n", avg_wt / n);
+
+    return 0;
+}
+#include <stdio.h>
+
+int main()
+{
+    int n;
+
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    int at[n], bt[n], rt[n], ct[n], tat[n], wt[n];
+
+    for (int i = 0; i < n; i++)
+    {
+        printf("Enter AT and BT for P%d: ", i + 1);
+        scanf("%d %d", &at[i], &bt[i]);
+
+        rt[i] = bt[i];
+    }
+
+    int time = 0;
+    int completed = 0;
+
+    printf("\nGantt Chart:\n");
+
+    while (completed < n)
+    {
+        int shortest = -1;
+
+        for (int i = 0; i < n; i++)
+        {
+            if (at[i] <= time && rt[i] > 0)
+            {
+                if (shortest == -1 || rt[i] < rt[shortest])
+                {
+                    shortest = i;
+                }
+            }
+        }
+
+        if (shortest == -1)
+        {
+            time++;
+            continue;
+        }
+
+        printf("| P%d ", shortest + 1);
+
+        rt[shortest]--;
+        time++;
+
+        if (rt[shortest] == 0)
+        {
+            ct[shortest] = time;
+            completed++;
+        }
+    }
+
+    printf("|\n");
+
+    float avg_tat = 0, avg_wt = 0;
+
+    printf("\nProcess\tAT\tBT\tCT\tTAT\tWT\n");
+
+    for (int i = 0; i < n; i++)
+    {
+        tat[i] = ct[i] - at[i];
+        wt[i] = tat[i] - bt[i];
+
+        avg_tat += tat[i];
+        avg_wt += wt[i];
+
+        printf("P%d\t%d\t%d\t%d\t%d\t%d\n",
+               i + 1, at[i], bt[i], ct[i], tat[i], wt[i]);
+    }
+
+    printf("\nAverage TAT = %.2f", avg_tat / n);
+    printf("\nAverage WT = %.2f\n", avg_wt / n);
+
+    return 0;
+}
